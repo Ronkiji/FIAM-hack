@@ -22,9 +22,41 @@ Instructions for installation on windows are on the Rye site
 
 This will create a virtual environment and install all the required dependencies specified in the `pyproject.toml` file.
 
+Mac OS:
 4. Activate the virtual environment (from main dir):
    ```
    . .venv/bin/activate
    ```
 
+Windows OS:
+4. Open Windows PowerShell (Admin):
+   Press
+   ```
+   Ctr + X
+   ```
+   Then select Windows PowerShell (Admin)
 
+5.  Check if you have permission to run scripts:
+   ```
+   Get-ExecutionPolicy
+   ```
+
+   Then press enter
+
+If you get the output
+   ```
+   RemoteSigned
+   ```
+skip the next step
+
+6. Allow system to run scripts:
+   ```
+   Set-ExecutionPolicy RemoteSigned
+   ```
+
+   Then press enter and type Y to confirm change
+
+7. Activate the virtual environment (from main dir):
+   ```
+   .\.venv\Scripts\activate
+   ```
