@@ -11,6 +11,7 @@ dependencies = [
     "scikit-learn>=1.5.2",
     "statsmodels>=0.14.3",
     "tensorflow>=2.17.0",
+    "xgboost>=2.1.1",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"

@@ -65,6 +65,7 @@ numpy==1.26.4
     # via statsmodels
     # via tensorboard
     # via tensorflow-intel
+    # via xgboost
 opt-einsum==3.3.0
     # via tensorflow-intel
 optree==0.12.1
@@ -97,6 +98,7 @@ scikit-learn==1.5.2
 scipy==1.14.1
     # via scikit-learn
     # via statsmodels
+    # via xgboost
 setuptools==75.1.0
     # via tensorboard
     # via tensorflow-intel
@@ -136,3 +138,5 @@ wheel==0.44.0
     # via astunparse
 wrapt==1.16.0
     # via tensorflow-intel
+xgboost==2.1.1
+    # via fiam-hack
