@@ -32,3 +32,42 @@ X_train_top = X_train[top_features]
 X_test_top = X_test[top_features]
 
 print(top_features)
+
+'''
+model that trained with data up to end of 2008
+2009-01 - stock return -0.1
+
+2009-02
+2009 validation 
+2010 testing
+2011? 
+model - 2000-2008
+
+LSTM - 2008 
+
+1 model -> 2000 - 2008
+2 model -> 2000 - 2009
+LSTM underweighs 2000
+
+stock_ext
+
+prediction S&P 0.2
+reality s&p 0.01
+prediction ETH 0.2
+reality ETH 0.5
+
+
+INTL 0.3 -> long
+APPL 0.1
+NVDA -0.1
+TSMC -0.5 -> short
+
+TSMC abs(-0.5)
+
+X = volality
+S&P +0.2 
+S&P -0.2 
+
+
+
+'''

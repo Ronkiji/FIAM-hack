@@ -23,7 +23,7 @@ with open(mapping_txt_filename, "w") as file:
         file.write(f"{row['permno']} = {row['stock_ticker']}\n")
 
 # remove these columns
-remove = ["date", "stock_ticker", "cusip", "comp_name", "shrcd", "ret_eom", "exchcd", "size_port"]
+remove = ["stock_ticker", "cusip", "comp_name", "shrcd", "ret_eom", "exchcd", "size_port"]
 df_filtered = df_filtered.drop(columns=[col for col in remove if col in df.columns])
 
 df_filtered = df_filtered.rename(columns={'stock_exret': 'output'})
