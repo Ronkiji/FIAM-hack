@@ -2,53 +2,52 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 import numpy as np
 from sklearn.metrics import r2_score
+import tensorflow as tf
 from keras.src.models import Sequential
 from keras.src.layers import LSTM, Dense, Dropout, Bidirectional, Input
 import os
 from datetime import datetime
 from fiam_hack.evaluate import evaluate
 
-# if im predicting for 2023 - pass in all data in the past 3 years leading up to that month
-months = 36 # RD
-years = 3 # RD
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
-# generate from csv_transformer.py
+#######################
+# DATA CONFIGURATIONS #
+#######################
+
+# generated from csv_transformer.py
 df = pd.read_csv("datasets/20240924_182044_data.csv")
 
-# features that we choose
+# chosen features for ML
 features = ['mspread', 'rf', 'month', 'prc', 'ret_3_1', 'ret_1_0', 'betadown_252d', 'seas_1_1an', 
                    'ret_6_1', 'seas_2_5an', 'bidaskhl_21d', 'prc_highprc_252d', 'ret_9_1', 'ret_12_7', 
                    'beta_dimson_21d', 'ret_12_1', 'seas_1_1na', 'rvol_21d', 'ivol_capm_252d','market_equity']
 
-# fixes the DataFrame
+# reformat the DataFrame 
 df = df[['date', 'permno', 'output'] + features]
+
 # convert 'yyyymmdd' to 'yyyymm'
 df['date'] = df['date'].astype(str).str[:6]
-df.ffill(inplace=True) # fills in empty -->>>>>> theres quite a bit of empty stuff
 
+# fill in empty entries
+df.ffill(inplace=True)
 
-# standardizing 
+# standardizing all feature columns
 scaler = StandardScaler()
 df[features] = scaler.fit_transform(df[features])
-# RD standardize the output, the model predictions changes a lot? dunno why
+# RD: Should we standardize the output column too? And convert it back at the end? It changes the scores a lot.
 
-def create_sequences(data, time_steps=months):
-    sequences = []
-    outputs = []
+########################
+# VARIABLE DEFINITIONS #
+########################
 
-    for permno in data['permno'].unique():
-        stock_data = data[data['permno'] == permno]
-        # check if the stock has enough data (at least time_steps + 1)
-        len(stock_data)
-        if len(stock_data) < time_steps + 1:
-            continue # skipping
-        for i in range(len(stock_data) - time_steps):
-            seq = stock_data[features].iloc[i:i + time_steps].values
-            output = stock_data['output'].iloc[i + time_steps]
-            sequences.append(seq)
-            outputs.append(output)
-    return np.array(sequences), np.array(outputs)
+# final variables
+MONTHS = 36 # RD
+YEARS = 3 # RD
+EPOCHS = 20
+BATCH = 20
 
+# dates yyyymm format
 start_train_date = 200001
 end_train_date = 200712
 start_val_date = 200801 
@@ -56,9 +55,52 @@ end_val_date = 200912
 start_oos_date = 201001
 end_oos_date = 201012
 
+# array for all predictions from 201001 to 202312
+predictions = []
+
+#######################
+# FUNCTION DEFINITION #
+#######################
+
+def create_sequences(data, time_steps=MONTHS, test=False):
+    ''' Creates sequences of features fed into the LSTM model '''
+    sequences = [] # input sequences
+    outputs = [] # matching output (expected)
+    dates = [] # dates
+    permnos = [] # permnos
+
+    for permno in data['permno'].unique():
+        stock_data = data[data['permno'] == permno]
+
+        # check if the stock has enough data (at least time_steps + 1)
+        if len(stock_data) < time_steps + 1:
+            continue # skipping
+        # iterate over how many month available
+        for i in range(len(stock_data) - time_steps):
+            # time_steps * num_features
+            # gets past 36 months of data + current
+            # for 201001, it has all data from 200701 till 201001
+            seq = stock_data[features].iloc[i:i + time_steps + 1].values
+            output = stock_data['output'].iloc[i + time_steps]
+            sequences.append(seq)
+            outputs.append(output)
+
+            if test:
+                date = stock_data['date'].iloc[i + time_steps]
+                pn = stock_data['permno'].iloc[i + time_steps]
+                dates.append(date)
+                permnos.append(pn)           
+
+    # shape: (num_stocks, time_steps, num_features) (num_stocks * 1)
+    # if test, return dates and permnos that matches the output set
+    if test:
+        return np.array(sequences), np.array(outputs), np.array(dates), np.array(permnos)
+    else:
+        return np.array(sequences), np.array(outputs)
+
 def update_dates():
+    ''' Rolling window: update all the dates by one year '''
     global start_train_date, end_train_date, start_val_date, end_val_date, start_oos_date, end_oos_date
-    
     start_train_date += 100
     end_train_date += 100
     start_val_date += 100 
@@ -66,34 +108,42 @@ def update_dates():
     start_oos_date += 100 
     end_oos_date += 100
 
-all_predictions = []
-
 # rolling window per year
 while end_oos_date <= 202312:
+
+    ##########################
+    # PREP DATA FOR TRAINING #
+    ##########################
 
     print(f"Training period: {pd.Period(start_train_date, freq='M')} to {pd.Period(end_train_date, freq='M')}")
     print(f"Validation period: {pd.Period(start_val_date, freq='M')} to {pd.Period(end_val_date, freq='M')}")
     print(f"Out-of-sample prediction period: {pd.Period(start_oos_date, freq='M')} to {pd.Period(end_oos_date, freq='M')}")
 
+    # get inputs/outputs for each set of data
     train_data = df[(df['date'] >= str(start_train_date)) & (df['date'] <= str(end_train_date))]
-    val_data = df[(df['date'] >= str(start_val_date - (years * 100))) & (df['date'] <= str(end_val_date))]
-    test_data = df[(df['date'] >= str(start_oos_date - (years * 100))) & (df['date'] <= str(end_oos_date))]
+    val_data = df[(df['date'] >= str(start_val_date - (YEARS * 100))) & (df['date'] <= str(end_val_date))]
+    test_data = df[(df['date'] >= str(start_oos_date - (YEARS * 100))) & (df['date'] <= str(end_oos_date))]
+    # feed time parsed data into create_equences function
+    X_train, y_train = create_sequences(train_data)
+    X_val, y_val = create_sequences(val_data)
+    X_test, y_test, test_dates, test_permnos = create_sequences(test_data, test=True)
 
+    # DEBUG PRINT STATEMENTS
     # print(f"Number of training data points: {len(train_data)}")
     # print(f"Number of validation data points: {len(val_data)}")
     # print(f"Number of test data points: {len(test_data)}")
-    
-    X_train, y_train = create_sequences(train_data)
-    X_val, y_val = create_sequences(val_data)
-    X_test, y_test = create_sequences(test_data)
-
     # print(X_train.shape)
     # print(X_val.shape)
     # print(X_test.shape)
 
-    # define the LSTM model 
-    # RD figure out which layers to use, directional vs bidirectional 
-    # dropout vs l1 or l2 reg vs early stopping  
+    ###################################
+    # MODEL DEFINITION AND PREDICTION #
+    ###################################
+
+    # RD: Figure our which layers are good to use, how many units to use on LSTM. 
+    # When to use dropout layers? Other layers? 
+    # Directional vs Bidirectional? It means if we tune model weights in both directions, or just one
+    # Regularization? L1, L2, Early stopping
     model = Sequential()
     model.add(Input(shape=(X_train.shape[1], X_train.shape[2])))  # Define input layer first
     model.add(Bidirectional(LSTM(250, return_sequences=True)))
@@ -105,11 +155,11 @@ while end_oos_date <= 202312:
     model.add(Dense(50, activation='relu'))
     model.add(Dense(1))
 
-    # RD 
+    # RD: are there better loss functions? are there better optimizers?
     model.compile(optimizer='adam', loss='mean_squared_error')
 
-    # train the model RD
-    model.fit(X_train, y_train, epochs=20, batch_size=32, validation_data=(X_val, y_val), verbose=0)
+    # RD: epochs and batch are defined in the variable section
+    model.fit(X_train, y_train, epochs=EPOCHS, batch_size=BATCH, validation_data=(X_val, y_val), verbose=1)
 
     # output i dont think is in 1D
     test_predictions = model.predict(X_test)
@@ -118,36 +168,31 @@ while end_oos_date <= 202312:
     r2 = r2_score(y_test, test_predictions.flatten())
     print(f"R² score for out-of-sample predictions: {r2}")
 
-    # for ronald to look into
-    if len(y_test) > 0:
-        # ensure we are slicing to match the length of y_test
-        test_dates = test_data['date'].iloc[months:months + len(y_test)].values 
-        permnos = test_data['permno'].iloc[months:months + len(y_test)].values
-    else:
-        print("No valid test data available for creating predictions.")
-
     # output
     oos_predictions = pd.DataFrame({
         'date': test_dates,
-        'permno': permnos,
+        'permno': test_permnos,
         'target': y_test, 
         'predicted': test_predictions.flatten() 
     })
 
-    all_predictions.append(oos_predictions)
+    predictions.append(oos_predictions)
 
     # save to dump folder
-    # oos_predictions.to_csv(os.path.join('dump', f"oos_predictions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"), index=False)
-    evaluate(oos_predictions) # just for curiosity sake
-
+    oos_predictions.to_csv(os.path.join('dump', f"oos_predictions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"), index=False)
+    
+    # for curiosity sake
+    evaluate(oos_predictions.copy())
     print()
-
+    # update dates by one year
     update_dates()
 
 
-evaluate(pd.concat(all_predictions))
-
-final_predictions = pd.concat(all_predictions)
-final_predictions.reset_index(drop=True, inplace=True)
-
+final_predictions = pd.concat(predictions)
+evaluate(final_predictions.copy())
+# sort by date
+final_predictions.sort_values(by=final_predictions.columns[0], inplace=True)
+final_predictions.to_csv(os.path.join('dump', f'final_output_with_target_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'), index=False)
+# drop target column
+final_predictions = final_predictions.drop("target", axis=1)
 final_predictions.to_csv(os.path.join('dump', f'final_output_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'), index=False)
