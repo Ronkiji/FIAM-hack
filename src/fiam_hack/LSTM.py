@@ -9,22 +9,21 @@ import os
 from datetime import datetime
 from fiam_hack.evaluate import evaluate
 
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-
 #######################
 # DATA CONFIGURATIONS #
 #######################
 
 # generated from csv_transformer.py
-df = pd.read_csv("datasets/20240924_182044_data.csv")
+df = pd.read_csv("hackathon_sample_v2.csv")
+print("CSV has been read into df variable.")
 
 # chosen features for ML
 features = ['mspread', 'rf', 'month', 'prc', 'ret_3_1', 'ret_1_0', 'betadown_252d', 'seas_1_1an', 
                    'ret_6_1', 'seas_2_5an', 'bidaskhl_21d', 'prc_highprc_252d', 'ret_9_1', 'ret_12_7', 
-                   'beta_dimson_21d', 'ret_12_1', 'seas_1_1na', 'rvol_21d', 'ivol_capm_252d','market_equity']
+                   'beta_dimson_21d', 'ret_12_1', 'seas_1_1na', 'rvol_21d', 'ivol_capm_252d']
 
 # reformat the DataFrame 
-df = df[['date', 'permno', 'output'] + features]
+df = df[['date', 'permno', 'stock_exret', 'market_equity'] + features]
 
 # convert 'yyyymmdd' to 'yyyymm'
 df['date'] = df['date'].astype(str).str[:6]
@@ -32,10 +31,15 @@ df['date'] = df['date'].astype(str).str[:6]
 # fill in empty entries
 df.ffill(inplace=True)
 
+print("Starting standardization.")
+
 # standardizing all feature columns
 scaler = StandardScaler()
 df[features] = scaler.fit_transform(df[features])
 # RD: Should we standardize the output column too? And convert it back at the end? It changes the scores a lot.
+
+print("Data configuration done.")
+print()
 
 ########################
 # VARIABLE DEFINITIONS #
@@ -46,6 +50,7 @@ MONTHS = 36 # RD
 YEARS = 3 # RD
 EPOCHS = 20
 BATCH = 20
+TOP = 200
 
 # dates yyyymm format
 start_train_date = 200001
@@ -68,8 +73,16 @@ def create_sequences(data, time_steps=MONTHS, test=False):
     outputs = [] # matching output (expected)
     dates = [] # dates
     permnos = [] # permnos
+    iterations = data['permno'].unique()
 
-    for permno in data['permno'].unique():
+    if test:
+        # only get top 200 stocks
+        latest_month = data['date'].max()
+        latest_data = data[data['date'] == latest_month]
+        top_stocks = latest_data.sort_values(by='market_equity', ascending=False)
+        iterations = top_stocks['permno'].unique()[:TOP]
+
+    for permno in iterations:
         stock_data = data[data['permno'] == permno]
 
         # check if the stock has enough data (at least time_steps + 1)
@@ -81,7 +94,7 @@ def create_sequences(data, time_steps=MONTHS, test=False):
             # gets past 36 months of data + current
             # for 201001, it has all data from 200701 till 201001
             seq = stock_data[features].iloc[i:i + time_steps + 1].values
-            output = stock_data['output'].iloc[i + time_steps]
+            output = stock_data['stock_exret'].iloc[i + time_steps]
             sequences.append(seq)
             outputs.append(output)
 
@@ -159,7 +172,7 @@ while end_oos_date <= 202312:
     model.compile(optimizer='adam', loss='mean_squared_error')
 
     # RD: epochs and batch are defined in the variable section
-    model.fit(X_train, y_train, epochs=EPOCHS, batch_size=BATCH, validation_data=(X_val, y_val), verbose=1)
+    model.fit(X_train, y_train, epochs=EPOCHS, batch_size=BATCH, validation_data=(X_val, y_val), verbose=0)
 
     # output i dont think is in 1D
     test_predictions = model.predict(X_test)
