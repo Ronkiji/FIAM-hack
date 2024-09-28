@@ -5,6 +5,9 @@ from sklearn.metrics import r2_score
 import tensorflow as tf
 from keras.src.models import Sequential
 from keras.src.layers import LSTM, Dense, Dropout, Bidirectional, Input
+# use these when actually running the model, for some reason its bugging out, but still works
+# from tensorflow.keras.models import Sequential
+# from tensorflow.keras.ayers import LSTM, Dense, Dropout, Bidirectional, Input
 import os
 from datetime import datetime
 from fiam_hack.evaluate import evaluate
@@ -49,7 +52,7 @@ print()
 # final variables
 MONTHS = 36 # RD
 YEARS = 3 # RD
-EPOCHS = 20
+EPOCHS = 2
 BATCH = 20
 TOP = 200
 
