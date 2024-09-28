@@ -8,14 +8,14 @@ from keras.src.layers import LSTM, Dense, Dropout, Bidirectional, Input
 import os
 from datetime import datetime
 from fiam_hack.evaluate import evaluate
-from fiam_hack.csv_filter import remove_bottom_percentile
+from fiam_hack.csv_filter import remove_bottom_percentile, keep_top
 
 #######################
 # DATA CONFIGURATIONS #
 #######################
 
 # generated from csv_transformer.py
-df = pd.read_csv("datasets/20240924_194354_data.csv")
+df = pd.read_csv("datasets/20240928_012932_data.csv")
 print("CSV has been read into df variable.")
 
 # chosen features for ML
@@ -76,13 +76,6 @@ def create_sequences(data, time_steps=MONTHS, test=False):
     permnos = [] # permnos
     iterations = data['permno'].unique()
 
-    if test:
-        # only get top x stocks
-        latest_month = data['date'].max()
-        latest_data = data[data['date'] == latest_month]
-        top_stocks = latest_data.sort_values(by='market_equity', ascending=False)
-        iterations = top_stocks['permno'].unique()[:TOP]
-
     for permno in iterations:
         stock_data = data[data['permno'] == permno]
 
@@ -100,6 +93,7 @@ def create_sequences(data, time_steps=MONTHS, test=False):
             outputs.append(output)
 
             if test:
+                # get associated stock_data and permno matching the output
                 date = stock_data['date'].iloc[i + time_steps]
                 pn = stock_data['permno'].iloc[i + time_steps]
                 dates.append(date)
@@ -133,14 +127,18 @@ while end_oos_date <= 202312:
     print(f"Validation period: {pd.Period(start_val_date, freq='M')} to {pd.Period(end_val_date, freq='M')}")
     print(f"Out-of-sample prediction period: {pd.Period(start_oos_date, freq='M')} to {pd.Period(end_oos_date, freq='M')}")
 
-    # get inputs/outputs for each set of data
+    # start by retrieving training and validation data, and remove bottom percentile (not peaking into future data)
+    tvdf = df[(df['date'] >= str(start_train_date)) & (df['date'] <= str(end_val_date))]
+    tvdf = remove_bottom_percentile(tvdf)
 
-    # train_val_data = df[(df['date'] >= str(start_train_date)) & (df['date'] <= str(end_val_date))]
-
-
-    train_data = df[(df['date'] >= str(start_train_date)) & (df['date'] <= str(end_train_date))]
-    val_data = df[(df['date'] >= str(start_val_date - (YEARS * 100))) & (df['date'] <= str(end_val_date))]
+    # split it into training, validation, and testing data
+    train_data = tvdf[(tvdf['date'] >= str(start_train_date)) & (tvdf['date'] <= str(end_train_date))]
+    val_data = tvdf[(tvdf['date'] >= str(start_val_date - (YEARS * 100))) & (tvdf['date'] <= str(end_val_date))]
     test_data = df[(df['date'] >= str(start_oos_date - (YEARS * 100))) & (df['date'] <= str(end_oos_date))]
+    # at each month, only keep top TOP stocks by market equity
+    # to predict for February, only predict for top x stocks in January (not peaking into future data)
+    test_data = keep_top(test_data, TOP)
+
     # feed time parsed data into create_equences function
     X_train, y_train = create_sequences(train_data)
     X_val, y_val = create_sequences(val_data)
@@ -201,11 +199,11 @@ while end_oos_date <= 202312:
     update_dates()
 
 
-final_predictions = pd.concat(predictions)
-evaluate(final_predictions.copy())
+results = pd.concat(predictions)
+evaluate(results.copy())
 # sort by date
-final_predictions.sort_values(by=final_predictions.columns[0], inplace=True)
-final_predictions.to_csv(os.path.join('dump', f'final_output_with_target_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'), index=False)
+results.sort_values(by=results.columns[0], inplace=True)
+results.to_csv(os.path.join('dump', f'final_output_with_target_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'), index=False)
 # drop target column
-final_predictions = final_predictions.drop("target", axis=1)
-final_predictions.to_csv(os.path.join('dump', f'final_output_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'), index=False)
+results = results.drop("target", axis=1)
+results.to_csv(os.path.join('dump', f'final_output_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'), index=False)
