@@ -10,7 +10,7 @@ current_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # filter df to only include randomly select permnos
 unique_permnos = df['permno'].unique()
-selected_permnos = random.sample(list(unique_permnos), int(len(unique_permnos) * 0.1))
+selected_permnos = random.sample(list(unique_permnos), int(len(unique_permnos) * 0.2))
 df_filtered = df[df['permno'].isin(selected_permnos)]
 
 # mapped df
@@ -23,10 +23,11 @@ with open(mapping_txt_filename, "w") as file:
         file.write(f"{row['permno']} = {row['stock_ticker']}\n")
 
 # remove these columns
-remove = ["stock_ticker", "cusip", "comp_name", "shrcd", "ret_eom", "exchcd", "size_port"]
+# remove = ["stock_ticker", "cusip", "comp_name", "shrcd", "ret_eom", "exchcd", "size_port"]
+remove = ["cusip", "comp_name", "shrcd", "ret_eom", "exchcd", "size_port"]
 df_filtered = df_filtered.drop(columns=[col for col in remove if col in df.columns])
 
-df_filtered = df_filtered.rename(columns={'stock_exret': 'output'})
+# df_filtered = df_filtered.rename(columns={'stock_exret': 'output'})
 
 # save filtered data
 filtered_csv_filename = f"{output_folder}/{current_datetime}_data.csv"

@@ -8,13 +8,14 @@ from keras.src.layers import LSTM, Dense, Dropout, Bidirectional, Input
 import os
 from datetime import datetime
 from fiam_hack.evaluate import evaluate
+from fiam_hack.csv_filter import remove_bottom_percentile
 
 #######################
 # DATA CONFIGURATIONS #
 #######################
 
 # generated from csv_transformer.py
-df = pd.read_csv("hackathon_sample_v2.csv")
+df = pd.read_csv("datasets/20240924_194354_data.csv")
 print("CSV has been read into df variable.")
 
 # chosen features for ML
@@ -76,7 +77,7 @@ def create_sequences(data, time_steps=MONTHS, test=False):
     iterations = data['permno'].unique()
 
     if test:
-        # only get top 200 stocks
+        # only get top x stocks
         latest_month = data['date'].max()
         latest_data = data[data['date'] == latest_month]
         top_stocks = latest_data.sort_values(by='market_equity', ascending=False)
@@ -133,6 +134,10 @@ while end_oos_date <= 202312:
     print(f"Out-of-sample prediction period: {pd.Period(start_oos_date, freq='M')} to {pd.Period(end_oos_date, freq='M')}")
 
     # get inputs/outputs for each set of data
+
+    # train_val_data = df[(df['date'] >= str(start_train_date)) & (df['date'] <= str(end_val_date))]
+
+
     train_data = df[(df['date'] >= str(start_train_date)) & (df['date'] <= str(end_train_date))]
     val_data = df[(df['date'] >= str(start_val_date - (YEARS * 100))) & (df['date'] <= str(end_val_date))]
     test_data = df[(df['date'] >= str(start_oos_date - (YEARS * 100))) & (df['date'] <= str(end_oos_date))]
@@ -158,25 +163,20 @@ while end_oos_date <= 202312:
     # Directional vs Bidirectional? It means if we tune model weights in both directions, or just one
     # Regularization? L1, L2, Early stopping
     model = Sequential()
-    model.add(Input(shape=(X_train.shape[1], X_train.shape[2])))  # Define input layer first
-    model.add(Bidirectional(LSTM(250, return_sequences=True)))
+    model.add(Input(shape=(X_train.shape[1], X_train.shape[2])))
+    model.add(Bidirectional(LSTM(250, return_sequences=True))) 
     model.add(Dropout(0.3))
-    model.add(Bidirectional(LSTM(150, return_sequences=True)))
-    model.add(Dropout(0.3))
-    model.add(Bidirectional(LSTM(100)))
+    model.add(Bidirectional(LSTM(150, return_sequences=False))) 
     model.add(Dropout(0.3))
     model.add(Dense(50, activation='relu'))
     model.add(Dense(1))
 
     # RD: are there better loss functions? are there better optimizers?
     model.compile(optimizer='adam', loss='mean_squared_error')
-
     # RD: epochs and batch are defined in the variable section
-    model.fit(X_train, y_train, epochs=EPOCHS, batch_size=BATCH, validation_data=(X_val, y_val), verbose=0)
-
+    model.fit(X_train, y_train, epochs=EPOCHS, batch_size=BATCH, validation_data=(X_val, y_val), verbose=1)
     # output i dont think is in 1D
     test_predictions = model.predict(X_test)
-
     # r2 score calculation
     r2 = r2_score(y_test, test_predictions.flatten())
     print(f"R² score for out-of-sample predictions: {r2}")
