@@ -3,14 +3,14 @@ from sklearn.preprocessing import StandardScaler
 import numpy as np
 from sklearn.metrics import r2_score
 import tensorflow as tf
-from keras.src.models import Sequential
-from keras.src.layers import LSTM, Dense, Dropout, Bidirectional, Input
+# from keras.src.models import Sequential
+# from keras.src.layers import LSTM, Dense, Dropout, Bidirectional, Input
 from keras import regularizers
 from keras import callbacks
 
 # use these when actually running the model, for some reason its bugging out, but still works
-# from tensorflow.keras.models import Sequential
-# from tensorflow.keras.ayers import LSTM, Dense, Dropout, Bidirectional, Input
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Dropout, Bidirectional, Input
 import os
 from datetime import datetime
 from fiam_hack.evaluate import evaluate
@@ -21,7 +21,7 @@ from fiam_hack.csv_filter import remove_bottom_percentile, keep_top
 #######################
 
 # generated from csv_transformer.py
-df = pd.read_csv("C:\\Users\\ryan\\FIAM-hack\\hackathon_sample_v2.csv" )
+df = pd.read_csv("datasets/20240928_012932_data.csv" )
 print("CSV has been read into df variable.")
 
 # chosen features for ML
@@ -45,6 +45,8 @@ print("Starting standardization.")
 # standardizing all feature columns
 scaler = StandardScaler()
 df[features] = scaler.fit_transform(df[features])
+target_scaler = StandardScaler()
+df[['stock_exret']] = target_scaler.fit_transform(df[['stock_exret']])
 # RD: Should we standardize the output column too? And convert it back at the end? It changes the scores a lot.
 
 print("Data configuration done.")
@@ -58,7 +60,7 @@ print()
 MONTHS = 24 # DON'T INCREASE OR TEST SEQUENCE WILL BE EMPTY
 YEARS = 2 # RD
 EPOCHS = 100
-BATCH = 16
+BATCH = 32
 TOP = 200
 
 # dates yyyymm format
@@ -170,31 +172,54 @@ while end_oos_date <= 202312:
     # Regularization? L1, L2, Early stopping
     model = Sequential()
     model.add(Input(shape=(X_train.shape[1], X_train.shape[2])))
-    model.add(Bidirectional(LSTM(150, return_sequences=True))) 
+    model.add(LSTM(150, return_sequences=True)) 
     model.add(Dropout(0.2))
-    model.add(Bidirectional(LSTM(50, return_sequences=False))) 
+    model.add(LSTM(100, return_sequences=False))
     model.add(Dropout(0.3))
     model.add(Dense(50, activation='relu'))
     model.add(Dense(1))
 
     # RD: are there better loss functions? are there better optimizers?
-    model.compile(optimizer='adam', loss='mean_squared_error')
+    model.compile(optimizer='adam', loss=tf.keras.losses.Huber(delta=1.0))
     # RD: epochs and batch are defined in the variable section
 
-    early_stopping = callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+    # early_stopping = callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
     model.fit(X_train, y_train, epochs=EPOCHS, batch_size=BATCH, validation_data=(X_val, y_val), verbose=1)
     # output i dont think is in 1D
     test_predictions = model.predict(X_test)
+
+    # # Reshape y_test and test_predictions to 2D before inverse transforming
+    # y_test = target_scaler.inverse_transform(y_test.reshape(-1, 1)).flatten()
+    # test_predictions = target_scaler.inverse_transform(test_predictions.reshape(-1, 1)).flatten()
+
+    # # r2 score calculation
+    # r2 = r2_score(y_test, test_predictions)
+    # print(f"R² score for out-of-sample predictions: {r2}")
+
+    # # output
+    # oos_predictions = pd.DataFrame({
+    #     'date': test_dates,
+    #     'permno': test_permnos,
+    #     'target': y_test, 
+    #     'predicted': test_predictions 
+    # })
+
+    y_test = y_test.reshape(-1, 1)
+    test_predictions = test_predictions.reshape(-1, 1)
+
+    y_test_original = target_scaler.inverse_transform(y_test).flatten()
+    test_predictions_original = target_scaler.inverse_transform(test_predictions).flatten()
+
     # r2 score calculation
-    r2 = r2_score(y_test, test_predictions.flatten())
+    r2 = r2_score(y_test_original, test_predictions_original)
     print(f"R² score for out-of-sample predictions: {r2}")
 
     # output
     oos_predictions = pd.DataFrame({
         'date': test_dates,
         'permno': test_permnos,
-        'target': y_test, 
-        'predicted': test_predictions.flatten() 
+        'target': y_test_original,
+        'predicted': test_predictions_original 
     })
 
     predictions.append(oos_predictions)
@@ -213,7 +238,7 @@ while end_oos_date <= 202312:
 results = pd.concat(predictions)
 evaluate(results.copy())
 # sort by date
-results.sort_values(by=results.columns[0], inplace=True)
+results.sort_values(by=results.columns[3], inplace=True)
 results.to_csv(os.path.join('dump', f'final_output_with_target_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'), index=False)
 # drop target column
 results = results.drop("target", axis=1)
