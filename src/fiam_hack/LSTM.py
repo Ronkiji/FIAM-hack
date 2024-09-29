@@ -55,9 +55,9 @@ print()
 ########################
 
 # final variables
-MONTHS = 36 # RD
+MONTHS = 24 # DON'T INCREASE OR TEST SEQUENCE WILL BE EMPTY
 YEARS = 2 # RD
-EPOCHS = 100
+EPOCHS = 5
 BATCH = 16
 TOP = 200
 
@@ -182,7 +182,6 @@ while end_oos_date <= 202312:
     # RD: epochs and batch are defined in the variable section
 
     early_stopping = callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
-
     model.fit(X_train, y_train, epochs=EPOCHS, batch_size=BATCH, validation_data=(X_val, y_val), verbose=1)
     # output i dont think is in 1D
     test_predictions = model.predict(X_test)
