@@ -5,6 +5,9 @@ from sklearn.metrics import r2_score
 import tensorflow as tf
 from keras.src.models import Sequential
 from keras.src.layers import LSTM, Dense, Dropout, Bidirectional, Input
+from keras import regularizers
+from keras import callbacks
+
 # use these when actually running the model, for some reason its bugging out, but still works
 # from tensorflow.keras.models import Sequential
 # from tensorflow.keras.ayers import LSTM, Dense, Dropout, Bidirectional, Input
@@ -18,13 +21,15 @@ from fiam_hack.csv_filter import remove_bottom_percentile, keep_top
 #######################
 
 # generated from csv_transformer.py
-df = pd.read_csv("datasets/20240928_012932_data.csv")
+df = pd.read_csv("C:\\Users\\ryan\\FIAM-hack\\hackathon_sample_v2.csv" )
 print("CSV has been read into df variable.")
 
 # chosen features for ML
-features = ['mspread', 'rf', 'month', 'prc', 'ret_3_1', 'ret_1_0', 'betadown_252d', 'seas_1_1an', 
-                   'ret_6_1', 'seas_2_5an', 'bidaskhl_21d', 'prc_highprc_252d', 'ret_9_1', 'ret_12_7', 
-                   'beta_dimson_21d', 'ret_12_1', 'seas_1_1na', 'rvol_21d', 'ivol_capm_252d']
+features = ['mspread', 'rf', 'ebitda_mev', 'ivol_capm_252d', 'prc', 'niq_be', 'rvol_21d',
+            'at_me', 'rmax5_rvol_21d', 'z_score', 'seas_2_5an', 'netdebt_me', 'betadown_252d',
+            'ret_1_0', 'ncol_gr1a', 'ni_me', 'cash_at', 'prc_highprc_252d', 'dolvol_var_126d', 
+            'eps_actual', 'ret_60_12', 'ivol_hxz4_21d', 'seas_1_1an', 'ret_3_1', 'ret_6_1', 
+            'bidaskhl_21d', 'betabab_1260d', 'beta_60m']
 
 # reformat the DataFrame 
 df = df[['date', 'permno', 'stock_exret', 'market_equity'] + features]
@@ -51,9 +56,9 @@ print()
 
 # final variables
 MONTHS = 36 # RD
-YEARS = 3 # RD
-EPOCHS = 2
-BATCH = 20
+YEARS = 2 # RD
+EPOCHS = 100
+BATCH = 16
 TOP = 200
 
 # dates yyyymm format
@@ -165,9 +170,9 @@ while end_oos_date <= 202312:
     # Regularization? L1, L2, Early stopping
     model = Sequential()
     model.add(Input(shape=(X_train.shape[1], X_train.shape[2])))
-    model.add(Bidirectional(LSTM(250, return_sequences=True))) 
-    model.add(Dropout(0.3))
-    model.add(Bidirectional(LSTM(150, return_sequences=False))) 
+    model.add(Bidirectional(LSTM(150, return_sequences=True, kernel_regularizer=regularizers.l2(0.01)))) 
+    model.add(Dropout(0.2))
+    model.add(Bidirectional(LSTM(50, return_sequences=False))) 
     model.add(Dropout(0.3))
     model.add(Dense(50, activation='relu'))
     model.add(Dense(1))
@@ -175,6 +180,9 @@ while end_oos_date <= 202312:
     # RD: are there better loss functions? are there better optimizers?
     model.compile(optimizer='adam', loss='mean_squared_error')
     # RD: epochs and batch are defined in the variable section
+
+    early_stopping = callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+
     model.fit(X_train, y_train, epochs=EPOCHS, batch_size=BATCH, validation_data=(X_val, y_val), verbose=1)
     # output i dont think is in 1D
     test_predictions = model.predict(X_test)
