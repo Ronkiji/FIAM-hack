@@ -13,33 +13,33 @@
 absl-py==2.1.0
     # via keras
     # via tensorboard
-    # via tensorflow-intel
+    # via tensorflow
 astunparse==1.6.3
-    # via tensorflow-intel
+    # via tensorflow
 certifi==2024.8.30
     # via requests
 charset-normalizer==3.3.2
     # via requests
 flatbuffers==24.3.25
-    # via tensorflow-intel
+    # via tensorflow
 gast==0.6.0
-    # via tensorflow-intel
+    # via tensorflow
 google-pasta==0.2.0
-    # via tensorflow-intel
+    # via tensorflow
 grpcio==1.66.1
     # via tensorboard
-    # via tensorflow-intel
-h5py==3.11.0
+    # via tensorflow
+h5py==3.12.1
     # via keras
-    # via tensorflow-intel
+    # via tensorflow
 idna==3.10
     # via requests
 joblib==1.4.2
     # via scikit-learn
 keras==3.5.0
-    # via tensorflow-intel
+    # via tensorflow
 libclang==18.1.1
-    # via tensorflow-intel
+    # via tensorflow
 markdown==3.7
     # via tensorboard
 markdown-it-py==3.0.0
@@ -48,33 +48,31 @@ markupsafe==2.1.5
     # via werkzeug
 mdurl==0.1.2
     # via markdown-it-py
-ml-dtypes==0.4.1
+ml-dtypes==0.3.2
     # via keras
-    # via tensorflow-intel
+    # via tensorflow
 namex==0.0.8
     # via keras
 numpy==1.26.4
     # via h5py
     # via keras
     # via ml-dtypes
-    # via opt-einsum
     # via pandas
     # via patsy
     # via scikit-learn
     # via scipy
     # via statsmodels
     # via tensorboard
-    # via tensorflow-intel
+    # via tensorflow
     # via xgboost
-opt-einsum==3.3.0
-    # via tensorflow-intel
+opt-einsum==3.4.0
+    # via tensorflow
 optree==0.12.1
     # via keras
 packaging==24.1
     # via keras
     # via statsmodels
-    # via tensorboard
-    # via tensorflow-intel
+    # via tensorflow
 pandas==2.2.3
     # via fiam-hack
     # via statsmodels
@@ -82,7 +80,7 @@ patsy==0.5.6
     # via statsmodels
 protobuf==4.25.5
     # via tensorboard
-    # via tensorflow-intel
+    # via tensorflow
 pygments==2.18.0
     # via rich
 python-dateutil==2.9.0.post0
@@ -90,7 +88,7 @@ python-dateutil==2.9.0.post0
 pytz==2024.2
     # via pandas
 requests==2.32.3
-    # via tensorflow-intel
+    # via tensorflow
 rich==13.8.1
     # via keras
 scikit-learn==1.5.2
@@ -101,33 +99,31 @@ scipy==1.14.1
     # via xgboost
 setuptools==75.1.0
     # via tensorboard
-    # via tensorflow-intel
+    # via tensorflow
 six==1.16.0
     # via astunparse
     # via google-pasta
     # via patsy
     # via python-dateutil
     # via tensorboard
-    # via tensorflow-intel
+    # via tensorflow
 sklearn-preprocessing==0.1.0
     # via fiam-hack
 statsmodels==0.14.3
     # via fiam-hack
-tensorboard==2.17.1
-    # via tensorflow-intel
+tensorboard==2.16.2
+    # via tensorflow
 tensorboard-data-server==0.7.2
     # via tensorboard
-tensorflow==2.17.0
+tensorflow==2.16.2
     # via fiam-hack
-tensorflow-intel==2.17.0
-    # via tensorflow
 termcolor==2.4.0
-    # via tensorflow-intel
+    # via tensorflow
 threadpoolctl==3.5.0
     # via scikit-learn
 typing-extensions==4.12.2
     # via optree
-    # via tensorflow-intel
+    # via tensorflow
 tzdata==2024.1
     # via pandas
 urllib3==2.2.3
@@ -137,6 +133,6 @@ werkzeug==3.0.4
 wheel==0.44.0
     # via astunparse
 wrapt==1.16.0
-    # via tensorflow-intel
+    # via tensorflow
 xgboost==2.1.1
     # via fiam-hack

@@ -3,7 +3,8 @@ import pandas as pd
 import numpy as np
 import os
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LinearRegression, Lasso, Ridge, ElasticNet
+from sklearn.linear_model import LinearRegression, LassoCV, Ridge, ElasticNetCV
+from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
 from sklearn.metrics import mean_squared_error
 
 if __name__ == "__main__":
@@ -14,11 +15,11 @@ if __name__ == "__main__":
     pd.set_option("mode.chained_assignment", None)
 
     # set working directory
-    work_dir = "Your working directory"
+    work_dir = ""
 
     # read sample data
     file_path = os.path.join(
-        work_dir, "sample_data.csv"
+        work_dir, "hackathon_sample_v2.csv"
     )  # replace with the correct file name
     raw = pd.read_csv(
         file_path, parse_dates=["date"], low_memory=False
@@ -65,6 +66,11 @@ if __name__ == "__main__":
     starting = pd.to_datetime("20000101", format="%Y%m%d")
     counter = 0
     pred_out = pd.DataFrame()
+
+    # Define parameter grids for Lasso and ElasticNet for GridSearchCV
+    param_grid = {
+        'alpha': np.logspace(-4, 4, 20)  # Range of alphas to search for feature selection
+    }
 
     # estimation with expanding window
     while (starting + pd.DateOffset(years=11 + counter)) <= pd.to_datetime(
@@ -120,52 +126,34 @@ if __name__ == "__main__":
         x_pred = reg.predict(X_test) + Y_mean
         reg_pred["ols"] = x_pred
 
-        # Lasso
-        lambdas = np.arange(
-            -4, 4.1, 0.1
-        )  # search for the best lambda in the range of 10^-4 to 10^4, range can be adjusted
-        val_mse = np.zeros(len(lambdas))
-        for ind, i in enumerate(lambdas):
-            reg = Lasso(alpha=(10**i), max_iter=1000000, fit_intercept=False)
-            reg.fit(X_train, Y_train_dm)
-            val_mse[ind] = mean_squared_error(Y_val, reg.predict(X_val) + Y_mean)
+        # LassoCV for Feature Selection
+        lasso = LassoCV(alphas=np.logspace(-4, 4, 20), cv=5, fit_intercept=False, max_iter=100000)
+        lasso.fit(X_train, Y_train_dm)
+        reg_pred["lasso"] = lasso.predict(X_test) + Y_mean
+        best_alpha_lasso = lasso.alpha_
 
-        # select the best lambda based on the validation set
-        best_lambda = lambdas[np.argmin(val_mse)]
-        reg = Lasso(alpha=(10**best_lambda), max_iter=1000000, fit_intercept=False)
-        reg.fit(X_train, Y_train_dm)
-        x_pred = reg.predict(X_test) + Y_mean  # predict the out-of-sample testing set
-        reg_pred["lasso"] = x_pred
+        # Extract non-zero coefficients as best features from Lasso
+        lasso_coef = pd.Series(lasso.coef_, index=stock_vars)
+        best_lasso_features = lasso_coef[lasso_coef != 0].index.tolist()
+        print("Best Lasso Features:", best_lasso_features)
 
-        # Ridge
-        # same format as above
-        lambdas = np.arange(-1, 8.1, 0.1)
-        val_mse = np.zeros(len(lambdas))
-        for ind, i in enumerate(lambdas):
-            reg = Ridge(alpha=((10**i) * 0.5), fit_intercept=False)
-            reg.fit(X_train, Y_train_dm)
-            val_mse[ind] = mean_squared_error(Y_val, reg.predict(X_val) + Y_mean)
+        # Ridge with GridSearchCV for tuning
+        ridge = Ridge(fit_intercept=False)
+        grid_search_ridge = GridSearchCV(ridge, param_grid, scoring='neg_mean_squared_error', cv=5)
+        grid_search_ridge.fit(X_train, Y_train_dm)
+        reg_pred["ridge"] = grid_search_ridge.predict(X_test) + Y_mean
+        best_alpha_ridge = grid_search_ridge.best_params_['alpha']
 
-        best_lambda = lambdas[np.argmin(val_mse)]
-        reg = Ridge(alpha=((10**best_lambda) * 0.5), fit_intercept=False)
-        reg.fit(X_train, Y_train_dm)
-        x_pred = reg.predict(X_test) + Y_mean
-        reg_pred["ridge"] = x_pred
+        # ElasticNetCV for Feature Selection
+        enet = ElasticNetCV(alphas=np.logspace(-4, 4, 20), cv=5, fit_intercept=False, max_iter=100000)
+        enet.fit(X_train, Y_train_dm)
+        reg_pred["enet"] = enet.predict(X_test) + Y_mean
+        best_alpha_enet = enet.alpha_
 
-        # Elastic Net
-        # same format as above
-        lambdas = np.arange(-4, 4.1, 0.1)
-        val_mse = np.zeros(len(lambdas))
-        for ind, i in enumerate(lambdas):
-            reg = ElasticNet(alpha=(10**i), max_iter=1000000, fit_intercept=False)
-            reg.fit(X_train, Y_train_dm)
-            val_mse[ind] = mean_squared_error(Y_val, reg.predict(X_val) + Y_mean)
-
-        best_lambda = lambdas[np.argmin(val_mse)]
-        reg = ElasticNet(alpha=(10**best_lambda), max_iter=1000000, fit_intercept=False)
-        reg.fit(X_train, Y_train_dm)
-        x_pred = reg.predict(X_test) + Y_mean
-        reg_pred["en"] = x_pred
+         # Extract non-zero coefficients as best features from ElasticNet
+        enet_coef = pd.Series(enet.coef_, index=stock_vars)
+        best_enet_features = enet_coef[enet_coef != 0].index.tolist()
+        print("Best ElasticNet Features:", best_enet_features)
 
         # add to the output data
         pred_out = pred_out._append(reg_pred, ignore_index=True)
@@ -173,14 +161,17 @@ if __name__ == "__main__":
         # go to the next year
         counter += 1
 
-    # output the predicted value to csv
-    out_path = os.path.join(work_dir, "output.csv")
-    print(out_path)
+    # # output the predicted value to csv
+    # out_path = os.path.join(work_dir, "output.csv")
+    # print(out_path)
+    # pred_out.to_csv(out_path, index=False)
+    # Output the predicted values to CSV
+    out_path = os.path.join(work_dir, "output_with_feature_selection.csv")
     pred_out.to_csv(out_path, index=False)
 
     # print the OOS R2
     yreal = pred_out[ret_var].values
-    for model_name in ["ols", "lasso", "ridge", "en"]:
+    for model_name in ["ols", "lasso", "ridge", "enet"]:
         ypred = pred_out[model_name].values
         r2 = 1 - np.sum(np.square((yreal - ypred))) / np.sum(np.square(yreal))
         print(model_name, r2)
