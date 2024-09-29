@@ -170,7 +170,7 @@ while end_oos_date <= 202312:
     # Regularization? L1, L2, Early stopping
     model = Sequential()
     model.add(Input(shape=(X_train.shape[1], X_train.shape[2])))
-    model.add(Bidirectional(LSTM(150, return_sequences=True, kernel_regularizer=regularizers.l2(0.01)))) 
+    model.add(Bidirectional(LSTM(150, return_sequences=True))) 
     model.add(Dropout(0.2))
     model.add(Bidirectional(LSTM(50, return_sequences=False))) 
     model.add(Dropout(0.3))
@@ -200,6 +200,7 @@ while end_oos_date <= 202312:
     predictions.append(oos_predictions)
 
     # save to dump folder
+    oos_predictions.sort_values(by=oos_predictions.columns[0], inplace=True)
     oos_predictions.to_csv(os.path.join('dump', f"oos_predictions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"), index=False)
     
     # for curiosity sake
