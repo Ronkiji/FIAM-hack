@@ -31,7 +31,7 @@ def optimize_portfolio(predicted_returns_df, actual_returns_df):
         predicted_returns_df['date'] = pd.to_datetime(predicted_returns_df['date'], format='%Y%m')
 
     predicted_pivot = predicted_returns_df.pivot(index='date', columns='permno', values='predicted')
-    optimal_weights_dict = {}
+    optimal_weights_list = []
 
     for date in predicted_pivot.index:
         shortlisted_stocks = stock_filter(predicted_pivot.loc[date].dropna()) 
@@ -67,22 +67,29 @@ def optimize_portfolio(predicted_returns_df, actual_returns_df):
 
         optimal_weights = optimal_portfolio.x
         optimal_weights_series = pd.Series(optimal_weights, index=available_stocks)
-        optimal_weights_dict[date] = optimal_weights_series
+
+        # Flatten the data into a list of dictionaries
+        for permno, weight in optimal_weights_series.items():
+            optimal_weights_list.append({
+                'date': date.strftime('%Y-%m-%d'),  # Convert the date to a string
+                'permno': permno,
+                'weight': weight
+            })
 
         port_return, port_risk = portfolio_performance(optimal_weights, predicted_returns.values, cov_matrix.values)
 
         # was printing for my own benefit 
-        print(f"Month: {date.strftime('%Y%m')}")
-        print(f"Optimal Weights:\n{optimal_weights_series}")
-        print(f"Expected Return: {port_return:.6f}")
-        print(f"Portfolio Risk (Volatility): {port_risk:.6f}\n")
+        # print(f"Month: {date.strftime('%Y%m')}")
+        # print(f"Optimal Weights:\n{optimal_weights_series}")
+        # print(f"Expected Return: {port_return:.6f}")
+        # print(f"Portfolio Risk (Volatility): {port_risk:.6f}\n")
 
-    return optimal_weights_dict
+    return optimal_weights_list
 
 if __name__ == "__main__":
     actual_returns_df = pd.read_csv("hackathon_sample_v2.csv")
 
-    predicted_returns_df = pd.read_csv("final_output_20240925_235754.csv") # replace with actual annual predicted data
+    predicted_returns_df = pd.read_csv("oos_predictions_20240929_135802.csv") # replace with actual annual predicted data
 
     # run yearly optimization for all months of that year
     optimal_weights = optimize_portfolio(predicted_returns_df, actual_returns_df)
