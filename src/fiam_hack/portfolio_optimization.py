@@ -27,12 +27,12 @@ def maximize_sharpe(weights, returns, cov_matrix, risk_free_rate=0.0):
 
 def stock_filter(predicted_returns) -> list:
     top_decile_stocks = predicted_returns[predicted_returns >= predicted_returns.quantile(0.9)].index
-    bottom_decile_stocks = predicted_returns[predicted_returns <= predicted_returns.quantile(0.01)].index
+    bottom_decile_stocks = predicted_returns[predicted_returns <= predicted_returns.quantile(0.1)].index
     filtered_stocks = top_decile_stocks.union(bottom_decile_stocks)
 
-    # # Ensure at least 50 stocks are selected
-    # if len(filtered_stocks) < 50:
-    #     filtered_stocks = predicted_returns.nlargest(50).index
+    # Ensure at least 50 stocks are selected
+    if len(filtered_stocks) < 50:
+        filtered_stocks = predicted_returns.nlargest(50).index
     return filtered_stocks
 
 def optimize_portfolio(predicted_returns_df, actual_returns_df):
