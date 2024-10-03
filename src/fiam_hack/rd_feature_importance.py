@@ -1,4 +1,5 @@
 import pandas as pd
+from sklearn.ensemble import RandomForestRegressor, VotingRegressor
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler
 import xgboost as xgb
@@ -44,36 +45,48 @@ def train_xgboost(X, y):
     model.fit(X_train, y_train)
     return model
 
-def plot_feature_importance(model, feature_names, top_n):
-    importance = model.feature_importances_
-    feature_importance_df = pd.DataFrame({
-        'Feature': feature_names,
-        'Importance': importance
-    })
+def train_ensemble_model(X, y):
+    rf = RandomForestRegressor(n_estimators=100, max_depth=6, random_state=42)
     
-    # Sort the DataFrame
-    feature_importance_df = feature_importance_df.sort_values(by='Importance', ascending=False)
+    xgboost = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=100, max_depth=6, learning_rate=0.001, reg_alpha=0.1, reg_lambda=1.0)
+
+    ensemble = VotingRegressor([('rf', rf), ('xgb', xgboost)])
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    ensemble.fit(X_train, y_train)
     
-    top_features = feature_importance_df.head(top_n)
+    return ensemble
 
-    # Plot
-    plt.figure(figsize=(12, 8))
-    plt.barh(top_features['Feature'], top_features['Importance'], color='blue')
-    plt.xlabel("Feature Importance")
-    plt.title("Top Feature Importance for Predicting Stock Expected Return")
-    plt.xticks(rotation=45) 
-    plt.savefig('C:\\Users\\ryan\\FIAM-hack\\feature_importance.png')
-    plt.show()
+def plot_feature_importance(model, feature_names, top_n, model_name):
+    if hasattr(model, 'feature_importances_'):
+        importance = model.feature_importances_
+        feature_importance_df = pd.DataFrame({
+            'Feature': feature_names,
+            'Importance': importance
+        })
+        
+        # Sort the DataFrame
+        feature_importance_df = feature_importance_df.sort_values(by='Importance', ascending=False)
+        top_features = feature_importance_df.head(top_n)
 
+        plt.figure(figsize=(12, 8))
+        plt.barh(top_features['Feature'], top_features['Importance'], color='blue')
+        plt.xlabel("Feature Importance")
+        plt.title(f"Top Feature Importance for {model_name}")
+        plt.xticks(rotation=45) 
+        plt.savefig(f'C:\\Users\\ryan\\FIAM-hack\\feature_importance_{model_name}.png')
+        plt.show()
+    else:
+        print(f"{model_name} does not support feature importance.")
 
 def main(file_path):
     data = load_data(file_path)
     X, y = preprocess_data(data)
-    
     feature_names = data.drop(columns=identifying_columns).columns
+    ensemble = train_ensemble_model(X, y)
     
-    model = train_xgboost(X, y)
-    plot_feature_importance(model, feature_names, 40)
+    for model_name, model in ensemble.named_estimators_.items():
+        plot_feature_importance(model, feature_names, 40, model_name)
 
 if __name__ == "__main__":
 
