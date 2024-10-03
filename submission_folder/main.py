@@ -5,23 +5,23 @@ import simulation
 import portfolio_analysis
 import matplotlib.pyplot as plt
 
-df = pd.read_csv("hackathon_sample_v2.csv")
-df = df.loc[:, ['date', 'year', 'month','permno', 'stock_exret']]
-
-mkt = pd.read_csv("mkt_ind.csv")
-mkt['date'] = pd.to_datetime(mkt[['year', 'month']].assign(day=1))
-mkt.sort_values('date', inplace=True)
+# df = pd.read_csv("hackathon_sample_v2.csv")
+df = pd.read_csv("testing.csv")
 
 # run the model - all the variables are at the top of the file
-# results = lstm.run(df.copy())
+results = lstm.run(df.copy())
 
 # if you don't want to run the model
-# uncomment line 20, and comment out line 16
-results = pd.read_csv("results.csv")
+# uncomment line 16, and comment out line 12
+# results = pd.read_csv("results.csv")
 
 # Change as needed
 start_date = '2010-01-01'
 end_date = '2023-12-01'
+mkt = pd.read_csv("mkt_ind.csv")
+mkt['date'] = pd.to_datetime(mkt[['year', 'month']].assign(day=1))
+mkt.sort_values('date', inplace=True)
+df = df.loc[:, ['date', 'year', 'month','permno', 'stock_exret']]
 
 weights = optimization.run(results, df)
 portfolio_values = simulation.simulate(weights, df)
