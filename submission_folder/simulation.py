@@ -38,5 +38,5 @@ def simulate(optimal_weights, actual_returns):
         })
 
     cumulative_df = pd.DataFrame(cumulative_values)
-    cumulative_df.to_csv('cumulative_portfolio_values.csv', index=False)
+    cumulative_df.to_csv('output/cumulative_portfolio_values.csv', index=False)
     return cumulative_df

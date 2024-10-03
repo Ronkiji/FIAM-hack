@@ -12,7 +12,7 @@ from csv_functions import prepare_data, remove_bottom_percentile, keep_top
 # GLOBAL VARIABLE DEFINITIONS #
 ###############################
 
-# features used for training
+# features used for training, retrieved from running x file
 features = ['mspread', 'rf', 'ebitda_mev', 'ivol_capm_252d', 'prc', 'niq_be', 'rvol_21d',
             'at_me', 'rmax5_rvol_21d', 'z_score', 'seas_2_5an', 'netdebt_me', 'betadown_252d',
             'ret_1_0', 'ncol_gr1a', 'ni_me', 'cash_at', 'prc_highprc_252d', 'dolvol_var_126d', 
@@ -36,17 +36,17 @@ start_oos_date = 201001
 end_oos_date = 201012
 # final_end_date = 202312
 
-final_end_date = 201212
+final_end_date = 201112
 
 # array for all predictions 
 predictions = []
 
 # configure logging
 logging.basicConfig(
-    filename='training.log',  # Log file name
-    filemode='a',             # Append mode
-    format='%(asctime)s - %(message)s',  # Log format
-    level=logging.INFO        # Set log level
+    filename='output/training.log',         # Log file name
+    filemode='a',                           # Append mode
+    format='%(asctime)s - %(message)s',     # Log format
+    level=logging.INFO                      # Set log level
 )
 
 def create_sequences(data, time_steps=MONTHS, test=False):
@@ -187,7 +187,7 @@ def run(df):
    
     # sort by date
     results.sort_values(by=results.columns[1], inplace=True)
-    results.to_csv(f'final_output.csv', index=False)
+    results.to_csv(f'output/model_results.csv', index=False)
     
     # drop target column
     results = results.drop("target", axis=1)

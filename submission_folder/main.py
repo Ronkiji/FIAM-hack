@@ -5,25 +5,48 @@ import simulation
 import portfolio_analysis
 import matplotlib.pyplot as plt
 
-# df = pd.read_csv("hackathon_sample_v2.csv")
-df = pd.read_csv("testing.csv")
+'''
+The outputs from running this file will all be located in the empty 'output' folder.
+
+After running it, here are the outputted files:
+
+model_results.csv - results of all the OOS stock predictions 
+training.log - logs for the LSTM run in real time.
+
+weights.csv - chosen weights for our portfolio
+
+cumulative_porfolio_values.csv - monthly return for our portfolio
+statistics.txt - porfolio analysis statistics
+
+The final graph, Figure 1, comparing our strategy to S&P will be a popup. 
+'''
+
+# df = pd.read_csv("csv/hackathon_sample_v2.csv")
+df = pd.read_csv("csv/testing.csv")
 
 # run the model - all the variables are at the top of the file
 results = lstm.run(df.copy())
 
 # if you don't want to run the model
-# uncomment line 16, and comment out line 12
+# uncomment line 30, and comment out line 26
 # results = pd.read_csv("results.csv")
 
-# Change as needed
+# assign weights for the selected stocks from results for each month
+weights = optimization.run(results, df)
+weights.to_csv(f'output/weights.csv', index=False)
+
+# oos period
 start_date = '2010-01-01'
 end_date = '2023-12-01'
-mkt = pd.read_csv("mkt_ind.csv")
+
+# read in market indicator
+mkt = pd.read_csv("csv/mkt_ind.csv")
 mkt['date'] = pd.to_datetime(mkt[['year', 'month']].assign(day=1))
 mkt.sort_values('date', inplace=True)
+
+# extract needed columns from the df
 df = df.loc[:, ['date', 'year', 'month','permno', 'stock_exret']]
 
-weights = optimization.run(results, df)
 portfolio_values = simulation.simulate(weights, df)
 portfolio_values['date'] = pd.to_datetime(portfolio_values['date'])
 # portfolio_analysis.analyze_portfolio(portfolio_values, mkt, weights)
