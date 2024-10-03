@@ -90,8 +90,6 @@ def run(predicted_returns_df, actual_returns_df):
                 'weight': weight
             })
 
-        port_return, port_risk = portfolio_performance(optimal_weights, predicted_returns.values, cov_matrix.values)
-
     optimal_weights_df = pd.DataFrame(optimal_weights_list)
     
     return optimal_weights_df
