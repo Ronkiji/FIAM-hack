@@ -42,6 +42,7 @@ def optimize_portfolio(predicted_returns_df, actual_returns_df):
 
     predicted_pivot = predicted_returns_df.pivot(index='date', columns='permno', values='predicted')
     optimal_weights_list = []
+    actual_returns_df = actual_returns_df.loc[:, ['date','permno', 'stock_exret']]
     actual_returns_df['date'] = pd.to_datetime(actual_returns_df['date'], format='%Y%m%d', errors='coerce')
     actual_returns_df.sort_values('date', inplace=True)
     
@@ -91,21 +92,14 @@ def optimize_portfolio(predicted_returns_df, actual_returns_df):
 
         port_return, port_risk = portfolio_performance(optimal_weights, predicted_returns.values, cov_matrix.values)
 
-        # was printing for my own benefit 
-        # print(f"Month: {date.strftime('%Y%m')}")
-        # print(f"Optimal Weights:\n{optimal_weights_series}")
-        # print(f"Expected Return: {port_return:.6f}")
-        # print(f"Portfolio Risk (Volatility): {port_risk:.6f}\n")
-
-    return optimal_weights_list
+    optimal_weights_df = pd.DataFrame(optimal_weights_list)
+    
+    return optimal_weights_df
 
 if __name__ == "__main__":
     actual_returns_df = pd.read_csv("hackathon_sample_v2.csv")
-    actual_returns_df = actual_returns_df.loc[:, ['date','permno', 'stock_exret']]
 
     predicted_returns_df = pd.read_csv("final_output_20241001_202812.csv") # replace with actual annual predicted data
 
     # run yearly optimization for all months of that year
     optimal_weights = optimize_portfolio(predicted_returns_df, actual_returns_df)
-    output_csv = pd.DataFrame(optimal_weights)
-    output_csv.to_csv(f'optimal_weights.csv')
