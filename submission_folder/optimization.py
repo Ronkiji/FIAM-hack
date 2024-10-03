@@ -35,7 +35,7 @@ def stock_filter(predicted_returns) -> list:
         filtered_stocks = predicted_returns.nlargest(50).index
     return filtered_stocks
 
-def optimize_portfolio(predicted_returns_df, actual_returns_df):
+def run(predicted_returns_df, actual_returns_df):
     if not np.issubdtype(predicted_returns_df['date'].dtype, np.datetime64):
         predicted_returns_df['date'] = pd.to_datetime(predicted_returns_df['date'], format='%Y%m')
         predicted_returns_df.sort_values('date', inplace=True)
@@ -95,11 +95,3 @@ def optimize_portfolio(predicted_returns_df, actual_returns_df):
     optimal_weights_df = pd.DataFrame(optimal_weights_list)
     
     return optimal_weights_df
-
-if __name__ == "__main__":
-    actual_returns_df = pd.read_csv("hackathon_sample_v2.csv")
-
-    predicted_returns_df = pd.read_csv("final_output_20241001_202812.csv") # replace with actual annual predicted data
-
-    # run yearly optimization for all months of that year
-    optimal_weights = optimize_portfolio(predicted_returns_df, actual_returns_df)
