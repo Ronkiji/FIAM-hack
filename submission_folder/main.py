@@ -28,7 +28,7 @@ df = pd.read_csv("csv/testing.csv")
 results = lstm.run(df.copy())
 
 # if you don't want to run the model
-# uncomment line 30, and comment out line 26
+# uncomment line 31, and comment out line 24
 # results = pd.read_csv("results.csv")
 
 # assign weights for the selected stocks from results for each month
@@ -47,6 +47,7 @@ mkt.sort_values('date', inplace=True)
 # extract needed columns from the df
 df = df.loc[:, ['date', 'year', 'month','permno', 'stock_exret']]
 
+# run the simulation 
 portfolio_values = simulation.simulate(weights, df)
 portfolio_values['date'] = pd.to_datetime(portfolio_values['date'])
 # portfolio_analysis.analyze_portfolio(portfolio_values, mkt, weights)
