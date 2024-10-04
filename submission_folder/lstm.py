@@ -22,8 +22,7 @@ features = ['mspread', 'rf', 'ebitda_mev', 'ivol_capm_252d', 'prc', 'niq_be', 'r
 # final variables
 MONTHS = 24
 YEARS = 2
-# EPOCHS = 50
-EPOCHS = 1
+EPOCHS = 50
 BATCH = 32
 TOP = 200
 
@@ -34,9 +33,7 @@ start_val_date = 200801
 end_val_date = 200912
 start_oos_date = 201001
 end_oos_date = 201012
-# final_end_date = 202312
-
-final_end_date = 201112
+final_end_date = 202312
 
 # array for all predictions 
 predictions = []
