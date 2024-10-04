@@ -25,11 +25,11 @@ df = pd.read_csv("csv/hackathon_sample_v2.csv")
 # df = pd.read_csv("csv/testing.csv")
 
 # run the model - all the variables are at the top of the file
-results = lstm.run(df.copy())
+# results = lstm.run(df.copy())
 
 # if you don't want to run the model
 # uncomment line 31, and comment out line 24
-# results = pd.read_csv("results.csv")
+results = pd.read_csv("csv/results.csv")
 
 # assign weights for the selected stocks from results for each month
 weights = optimization.run(results, df)
@@ -45,13 +45,13 @@ mkt['date'] = pd.to_datetime(mkt[['year', 'month']].assign(day=1))
 mkt.sort_values('date', inplace=True)
 
 # extract needed columns from the df
-df = df.loc[:, ['date', 'year', 'month','permno', 'stock_exret']]
+df = df.loc[:, ['date', 'year', 'month','permno', 'stock_exret', 'stock_ticker']]
 
 # run the simulation 
 portfolio_values = simulation.simulate(weights, df)
 portfolio_values['date'] = pd.to_datetime(portfolio_values['date'])
 weights['date'] = pd.to_datetime(weights['date'])
-portfolio_analysis.analyze_portfolio(portfolio_values, mkt, weights)
+portfolio_analysis.analyze_portfolio(portfolio_values, mkt, weights, df)
 
 # Graphing prep
 plotting_data = pd.merge(portfolio_values, mkt[['date', 'rf', 'sp_ret']], on='date', how='inner')

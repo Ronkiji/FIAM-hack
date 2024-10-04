@@ -30,7 +30,7 @@ def turnover_count(df):
     ]  # calculate the turnover as the average of the percentage of stocks that are replaced each month
     return port_count["turnover"].mean()
 
-def analyze_portfolio(pred, mkt, portfolio_weights):
+def analyze_portfolio(pred, mkt, portfolio_weights, actual_returns_oos):
     # Open a file to write output
     with open('output/portfolio_analysis_output.txt', 'w') as file:
         file.write("PORTFOLIO ANALYSIS\n")
@@ -77,3 +77,20 @@ def analyze_portfolio(pred, mkt, portfolio_weights):
         drawdowns = rolling_peak - mkt["cumsum_log_port_11"]
         max_drawdown = drawdowns.max()
         file.write(f"Maximum Drawdown: {max_drawdown}\n")
+
+        total_weights = portfolio_weights.groupby('permno')['weight'].sum().reset_index()
+        total_weights.columns = ['permno', 'total_weight']  # Rename for clarity
+
+        # Aggregate nominal returns per stock (sum of returns)
+        nominal_returns = actual_returns_oos.groupby('permno')['stock_exret'].sum().reset_index()
+        nominal_returns.columns = ['permno', 'total_nominal_return']
+        holdings_summary = pd.merge(total_weights, nominal_returns, on='permno')
+
+        # Get the first occurrence of stock_ticker per permno from actual_returns_oos
+        stock_ticker_df = actual_returns_oos[['permno', 'stock_ticker']].drop_duplicates(subset='permno')
+        # Merge stock tickers with holdings summary
+        holdings_summary = pd.merge(holdings_summary, stock_ticker_df, on='permno', how='left')
+        
+        # Rank by nominal return and get top 10 holdings
+        top_holdings_by_return = holdings_summary.nlargest(10, 'total_nominal_return')
+        top_holdings_by_return.to_csv("output/top_10_holdings_by_nominal_return.csv", index=False)
