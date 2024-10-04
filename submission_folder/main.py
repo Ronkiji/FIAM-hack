@@ -21,15 +21,15 @@ statistics.txt - porfolio analysis statistics
 The final graph, Figure 1, comparing our strategy to S&P will be a popup. It can be saved as a .png file.
 '''
 
-df = pd.read_csv("csv/hackathon_sample_v2.csv")
-# df = pd.read_csv("csv/testing.csv")
+# df = pd.read_csv("csv/hackathon_sample_v2.csv")
+df = pd.read_csv("csv/testing.csv")
 
 # run the model - all the variables are at the top of the file
-# results = lstm.run(df.copy())
+results = lstm.run(df.copy())
 
 # if you don't want to run the model
 # uncomment line 31, and comment out line 24
-results = pd.read_csv("csv/results.csv")
+# results = pd.read_csv("csv/results.csv")
 
 # assign weights for the selected stocks from results for each month
 weights = optimization.run(results, df)
