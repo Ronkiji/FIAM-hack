@@ -18,11 +18,11 @@ weights.csv - chosen weights for our portfolio
 cumulative_porfolio_values.csv - monthly return for our portfolio
 statistics.txt - porfolio analysis statistics
 
-The final graph, Figure 1, comparing our strategy to S&P will be a popup. 
+The final graph, Figure 1, comparing our strategy to S&P will be a popup. It can be saved as a .png file.
 '''
 
-# df = pd.read_csv("csv/hackathon_sample_v2.csv")
-df = pd.read_csv("csv/testing.csv")
+df = pd.read_csv("csv/hackathon_sample_v2.csv")
+# df = pd.read_csv("csv/testing.csv")
 
 # run the model - all the variables are at the top of the file
 results = lstm.run(df.copy())
@@ -50,7 +50,8 @@ df = df.loc[:, ['date', 'year', 'month','permno', 'stock_exret']]
 # run the simulation 
 portfolio_values = simulation.simulate(weights, df)
 portfolio_values['date'] = pd.to_datetime(portfolio_values['date'])
-# portfolio_analysis.analyze_portfolio(portfolio_values, mkt, weights)
+weights['date'] = pd.to_datetime(weights['date'])
+portfolio_analysis.analyze_portfolio(portfolio_values, mkt, weights)
 
 # Graphing prep
 plotting_data = pd.merge(portfolio_values, mkt[['date', 'rf', 'sp_ret']], on='date', how='inner')

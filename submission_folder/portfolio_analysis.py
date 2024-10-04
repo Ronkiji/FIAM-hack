@@ -3,11 +3,6 @@ import numpy as np
 import statsmodels.formula.api as sm
 from pandas.tseries.offsets import *
 
-
-# pred = pd.read_csv('cumulative_portfolio_values.csv', parse_dates=["date"])
-# mkt = pd.read_csv('mkt_ind.csv')
-# portfolio_weights = pd.read_csv('optimal_weights.csv', parse_dates=["date"])
-
 # Calculate Turnover of the long and short portfolio
 def turnover_count(df):
     # count the number of stocks at the begnning of each month
@@ -36,72 +31,49 @@ def turnover_count(df):
     return port_count["turnover"].mean()
 
 def analyze_portfolio(pred, mkt, portfolio_weights):
-    
-    print("PORTFOLIO ANALYSIS") 
-    # Calculate the Sharpe ratio for the long-short Portfolio
-    # you can use the same formula to calculate the Sharpe ratio for the long and short portfolios separately
+    # Open a file to write output
+    with open('output/portfolio_analysis_output.txt', 'w') as file:
+        file.write("PORTFOLIO ANALYSIS\n")
 
-    # Calculate the CAPM Alpha for the long-short Portfolio
-    # you can use the same formula to calculate the Sharpe ratio for the long and short portfolios separately
+        pred = pred.merge(mkt, how="inner", on=["date"])
+        nw_ols = sm.ols(formula="monthly_return ~ rf", data=pred).fit(
+            cov_type="HAC", cov_kwds={"maxlags": 3}, use_t=True
+        )
+        file.write(nw_ols.summary().as_text() + '\n')
 
-    pred = pred.merge(mkt, how="inner", on=["date"])
-    # Newy-West regression for heteroskedasticity and autocorrelation robust standard errors
-    nw_ols = sm.ols(formula="monthly_return ~ rf", data=pred).fit(
-        cov_type="HAC", cov_kwds={"maxlags": 3}, use_t=True
-    )
-    print(nw_ols.summary())
+        sharpe = pred["monthly_return"].mean() / pred["monthly_return"].std() * np.sqrt(12)
+        file.write(f"\nSharpe Ratio (annualized): {sharpe}\n")
 
-    sharpe = (
-        pred["monthly_return"].mean() / pred["monthly_return"].std() * np.sqrt(12)
-    )  # Sharpe ratio is annualized
-    print("\nSharpe Ratio (annualized):", sharpe)
+        file.write(f"Average Annualized Portfolio Returns: {pred['monthly_return'].mean() * 12}\n")
+        file.write(f"Annualized Portfolio Standard Deviation: {pred['monthly_return'].std() * np.sqrt(12)}\n")
 
-    print("Average Annualized Portfolio Returns:", pred["monthly_return"].mean() * 12)
-    print("Annualized Portfolio Standard Deviation:", pred["monthly_return"].std() * np.sqrt(12))
+        file.write(f"CAPM Alpha: {nw_ols.params['Intercept']}\n")
+        file.write(f"Annualized Alpha: {nw_ols.params['Intercept'] * 12}\n")
+        file.write(f"t-statistic: {nw_ols.tvalues['Intercept']}\n")
+        file.write(f"Information Ratio (annualized): {nw_ols.params['Intercept'] / np.sqrt(nw_ols.mse_resid) * np.sqrt(12)}\n")
 
-    # Specifically, the alpha, t-statistic, and Information ratio are:
-    print("CAPM Alpha:", nw_ols.params["Intercept"])
-    print("Annualized Alpha:", nw_ols.params["Intercept"] * 12)
-    print("t-statistic:", nw_ols.tvalues["Intercept"])
-    print(
-        "Information Ratio (annualized):",
-        nw_ols.params["Intercept"] / np.sqrt(nw_ols.mse_resid) * np.sqrt(12),
-    )  # Information ratio is annualized
+        max_1m_loss = pred["monthly_return"].min()
+        file.write(f"Max 1-Month Loss: {max_1m_loss}\n")
 
-    # Max one-month loss of the long-short Port
-    max_1m_loss = pred["monthly_return"].min()
-    print("Max 1-Month Loss:", max_1m_loss)
+        pred["log_port"] = np.log(pred["monthly_return"] + 1)
+        pred["cumsum_log_port_11"] = pred["log_port"].cumsum(axis=0)
+        rolling_peak = pred["cumsum_log_port_11"].cummax()
+        drawdowns = rolling_peak - pred["cumsum_log_port_11"]
+        max_drawdown = drawdowns.max()
+        file.write(f"Maximum Drawdown: {max_drawdown}\n")
 
-    # Calculate Drawdown of the long-short Portfolio
-    pred["log_port"] = np.log(
-        pred["monthly_return"] + 1
-    )  # calculate log returns
-    pred["cumsum_log_port_11"] = pred["log_port"].cumsum(
-        axis=0
-    )  # calculate cumulative log returns
-    rolling_peak = pred["cumsum_log_port_11"].cummax()
-    drawdowns = rolling_peak - pred["cumsum_log_port_11"]
-    max_drawdown = drawdowns.max()
-    print("Maximum Drawdown:", max_drawdown)
+        file.write(f"Long & Short Portfolio Turnover: {turnover_count(portfolio_weights)}\n")
 
-    print("Long & Short Portfolio Turnover:", turnover_count(portfolio_weights))
+        file.write("\nS&P 500 PERFORMANCE\n")
+        sharpe_sp = mkt["sp_ret"].mean() / mkt["sp_ret"].std() * np.sqrt(12)
+        file.write(f"\nSharpe Ratio (annualized): {sharpe_sp}\n")
+        file.write(f"Average Annualized Portfolio Returns: {mkt['sp_ret'].mean() * 12}\n")
+        file.write(f"Annualized Portfolio Standard Deviation: {mkt['sp_ret'].std() * np.sqrt(12)}\n")
+        file.write(f"Max 1-Month Loss: {mkt['sp_ret'].min()}\n")
 
-    print("\nS&P 500 PERFORMANCE")
-    sharpe_sp = (
-        mkt["sp_ret"].mean() / mkt["sp_ret"].std() * np.sqrt(12)
-    )  # Sharpe ratio is annualized
-    print("\nSharpe Ratio (annualized):", sharpe_sp)
-    print("Average Annualized Portfolio Returns:", mkt["sp_ret"].mean() * 12)
-    print("Annualized Portfolio Standard Deviation:", mkt["sp_ret"].std() * np.sqrt(12))
-    print("Max 1-Month Loss:", mkt["sp_ret"].min())
-    # Calculate Drawdown of the long-short Portfolio
-    mkt["log_port"] = np.log(
-        mkt["sp_ret"] + 1
-    )  # calculate log returns
-    mkt["cumsum_log_port_11"] = mkt["log_port"].cumsum(
-        axis=0
-    )  # calculate cumulative log returns
-    rolling_peak = mkt["cumsum_log_port_11"].cummax()
-    drawdowns = rolling_peak - mkt["cumsum_log_port_11"]
-    max_drawdown = drawdowns.max()
-    print("Maximum Drawdown:", max_drawdown)
+        mkt["log_port"] = np.log(mkt["sp_ret"] + 1)
+        mkt["cumsum_log_port_11"] = mkt["log_port"].cumsum(axis=0)
+        rolling_peak = mkt["cumsum_log_port_11"].cummax()
+        drawdowns = rolling_peak - mkt["cumsum_log_port_11"]
+        max_drawdown = drawdowns.max()
+        file.write(f"Maximum Drawdown: {max_drawdown}\n")
