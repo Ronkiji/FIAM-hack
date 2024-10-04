@@ -12,7 +12,7 @@ from csv_functions import prepare_data, remove_bottom_percentile, keep_top
 # GLOBAL VARIABLE DEFINITIONS #
 ###############################
 
-# features used for training, retrieved from running x file
+# features used for training, retrieved from running feature_selection.py + personal analysis
 features = ['mspread', 'rf', 'ebitda_mev', 'ivol_capm_252d', 'prc', 'niq_be', 'rvol_21d',
             'at_me', 'rmax5_rvol_21d', 'z_score', 'seas_2_5an', 'netdebt_me', 'betadown_252d',
             'ret_1_0', 'ncol_gr1a', 'ni_me', 'cash_at', 'prc_highprc_252d', 'dolvol_var_126d', 
